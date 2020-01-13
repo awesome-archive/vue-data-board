@@ -6,6 +6,9 @@
         <span>{{ dashboard.desc }}</span>
       </div>
       <div v-show="mode === 'edit'">
+        <el-button type="primary" size="mini" @click="handleShare">
+          分享
+        </el-button>
         <el-button type="primary" size="mini" @click="handleLinkChart">
           添加图表
         </el-button>
@@ -54,7 +57,7 @@
         </el-card>
       </grid-item>
     </grid-layout>
-    <div v-else v-loading="loading" class="welcome-container">
+    <div v-if="charts.length === 0 && mode === 'edit'" v-loading="loading" class="welcome-container">
       <el-button type="primary" size="mini" @click="handleLinkChart">
         添加图表
       </el-button>
@@ -169,7 +172,7 @@ export default {
       this.loading = true
       chartByDashboard(this.dashboard.objectId).then(resp => {
         this.loading = false
-        this.charts = resp.data
+        this.charts = resp.data || []
         let filterStrs = []
         const layout = (this.dashboard.content && this.dashboard.content.layout) || []
         this.charts.forEach((chart, index) => {
@@ -252,6 +255,16 @@ export default {
 
       layout.push(posObj)
     },
+    handleShare() {
+      const h = this.$createElement
+      const link = `${location.host}/vue-data-board#/fullscreendb/${this.dashboard.objectId}`
+      this.$msgbox({
+        title: '分享链接',
+        message: h('p', null, [
+          h('a', { style: 'color: #205cd8', attrs: { href: link, target: '_blank' }}, link)
+        ])
+      })
+    },
     handleLinkChart() {
       chartList().then(resp => {
         this.myChartList = resp.data
@@ -314,9 +327,16 @@ export default {
     },
     exeSql(sqlSentence, item, index) {
       this.$set(this.chartLoading, item.objectId, true)
+      if (!sqlSentence) {
+        this.$message.warning(`图表：${item.chart_name} 查询语句异常`)
+        this.$set(this.chartLoading, item.objectId, false)
+        return
+      }
       exeSql(sqlSentence).then(resp => {
         this.$set(this.chartLoading, item.objectId, false)
         this.$set(this.results, item.objectId, resp.data)
+      }).catch(() => {
+        this.$set(this.chartLoading, item.objectId, false)
       })
     }
   }
